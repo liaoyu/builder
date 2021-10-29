@@ -160,7 +160,9 @@ export async function getServeConfig() {
   const config = await getConfig()
   return appendPlugins(
     config,
-    new ReactFastRefreshPlugin()
+    new ReactFastRefreshPlugin({
+      overlay: false
+    })
   )
 }
 
