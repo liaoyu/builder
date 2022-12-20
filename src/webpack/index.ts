@@ -1,8 +1,8 @@
-import { mapValues } from 'lodash'
+import { isEmpty, mapValues } from 'lodash'
 import produce from 'immer'
 import fs from 'fs'
 import path from 'path'
-import { Configuration, DefinePlugin, container } from 'webpack'
+import { Configuration, DefinePlugin } from 'webpack'
 import HtmlPlugin from 'html-webpack-plugin'
 import CopyPlugin from 'copy-webpack-plugin'
 import ReactFastRefreshPlugin from '@pmmmwh/react-refresh-webpack-plugin'
@@ -11,6 +11,8 @@ import CssMinimizerPlugin from 'css-minimizer-webpack-plugin'
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer'
 import WebpackBarPlugin from 'webpackbar'
 import ImageMinimizerPlugin from 'image-minimizer-webpack-plugin'
+import FederatedTypesPlugin from '@module-federation/typescript'
+
 import { getBuildRoot, abs, getStaticPath, getDistPath, getSrcPath } from '../utils/paths'
 import { BuildConfig, findBuildConfig, getNeedAnalyze } from '../utils/build-conf'
 import { addTransforms } from './transform'
@@ -20,7 +22,7 @@ import { getPathFromUrl, getPageFilename } from '../utils'
 import { appendPlugins, processSourceMapForDevServer, appendCacheGroups, parseOptimizationConfig, enableFilesystemCache } from '../utils/webpack'
 import { svgoConfigForImagemin } from '../utils/svgo'
 
-const ModuleFederationPlugin = container.ModuleFederationPlugin
+// const ModuleFederationPlugin = container.ModuleFederationPlugin
 const dirnameOfBuilder = path.resolve(__dirname, '../..')
 const nodeModulesOfBuilder = path.resolve(dirnameOfBuilder, 'node_modules')
 
@@ -118,14 +120,16 @@ export async function getConfig(): Promise<Configuration> {
   )
 
   const staticDirCopyPlugin = getStaticDirCopyPlugin(buildConfig)
+  const federationConfig = !isEmpty(buildConfig.federation) ? buildConfig.federation : null
 
   config = appendPlugins(
     config,
+    // federationConfig != null ? new ModuleFederationPlugin(federationConfig) : null,
+    federationConfig != null ? new FederatedTypesPlugin({ federationConfig }) : null,
     ...htmlPlugins,
     definePlugin,
     staticDirCopyPlugin,
-    new WebpackBarPlugin({ color: 'green' }),
-    buildConfig.federation != null ? new ModuleFederationPlugin(buildConfig.federation) : null
+    new WebpackBarPlugin({ color: 'green' })
   )
 
   if (isProd) {

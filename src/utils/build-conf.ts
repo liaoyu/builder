@@ -1,6 +1,8 @@
 import { mapValues } from 'lodash'
 import fs from 'fs'
 import path from 'path'
+import { container } from 'webpack'
+
 import files from '../constants/files'
 import { extend, watchFile } from '.'
 import { getBuildConfigFilePath, abs, getBuildRoot } from './paths'
@@ -112,6 +114,8 @@ export interface Targets {
   browsers: string[]
 }
 
+type ModuleFederationPluginOptions = ConstructorParameters<typeof container.ModuleFederationPlugin>['0']
+
 export interface BuildConfigInput {
   /** target config to extend */
   extends?: string
@@ -131,7 +135,7 @@ export interface BuildConfigInput {
   targets?: Targets
   test?: TestConfig
   engines?: Engines
-  federation?: any
+  federation?: ModuleFederationPluginOptions
 }
 
 export interface BuildConfig extends Required<BuildConfigInput> {
