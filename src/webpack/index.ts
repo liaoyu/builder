@@ -1,4 +1,4 @@
-import { mapValues } from 'lodash'
+import { isEmpty, mapValues } from 'lodash'
 import produce from 'immer'
 import fs from 'fs'
 import path from 'path'
@@ -125,7 +125,7 @@ export async function getConfig(): Promise<Configuration> {
     definePlugin,
     staticDirCopyPlugin,
     new WebpackBarPlugin({ color: 'green' }),
-    buildConfig.federation != null ? new ModuleFederationPlugin(buildConfig.federation) : null
+    !isEmpty(buildConfig.federation) ? new ModuleFederationPlugin(buildConfig.federation) : null
   )
 
   if (isProd) {

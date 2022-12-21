@@ -1,6 +1,8 @@
 import { mapValues } from 'lodash'
 import fs from 'fs'
 import path from 'path'
+import { container } from 'webpack'
+
 import files from '../constants/files'
 import { extend, watchFile } from '.'
 import { getBuildConfigFilePath, abs, getBuildRoot } from './paths'
@@ -112,6 +114,8 @@ export interface Targets {
   browsers: string[]
 }
 
+export type ModuleFederationPluginOptions = ConstructorParameters<typeof container.ModuleFederationPlugin>['0']
+
 export interface BuildConfigInput {
   /** target config to extend */
   extends?: string
@@ -131,7 +135,7 @@ export interface BuildConfigInput {
   targets?: Targets
   test?: TestConfig
   engines?: Engines
-  federation?: any
+  federation?: ModuleFederationPluginOptions
 }
 
 export interface BuildConfig extends Required<BuildConfigInput> {
@@ -148,7 +152,8 @@ function mergeConfig(cfg1: BuildConfigInput, cfg2: BuildConfigInput): BuildConfi
     envVariables: extend(cfg1.envVariables, cfg2.envVariables),
     optimization: extend(cfg1.optimization, cfg2.optimization) as Optimization,
     test: extend(cfg1.test, cfg2.test) as TestConfig,
-    engines: extend(cfg1.engines, cfg2.engines) as Engines
+    engines: extend(cfg1.engines, cfg2.engines) as Engines,
+    federation: extend(cfg1.federation, cfg2.federation) as ModuleFederationPluginOptions
   })
 }
 

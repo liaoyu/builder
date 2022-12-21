@@ -78,6 +78,7 @@
       "bucket": ""
     }
   },
+  "federation": {},
   "test": {
     "setupFiles": [],
     "moduleNameMapper": {}
