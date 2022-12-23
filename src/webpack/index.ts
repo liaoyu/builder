@@ -125,7 +125,11 @@ export async function getConfig(): Promise<Configuration> {
   config = appendPlugins(
     config,
     // federationConfig != null ? new ModuleFederationPlugin(federationConfig) : null,
-    federationConfig != null ? new FederatedTypesPlugin({ federationConfig }) : null,
+    federationConfig != null ? new FederatedTypesPlugin({
+      federationConfig,
+      disableDownloadingRemoteTypes: false,
+      disableTypeCompilation: false
+    }) : null,
     ...htmlPlugins,
     definePlugin,
     staticDirCopyPlugin,

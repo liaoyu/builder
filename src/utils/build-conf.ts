@@ -114,7 +114,7 @@ export interface Targets {
   browsers: string[]
 }
 
-type ModuleFederationPluginOptions = ConstructorParameters<typeof container.ModuleFederationPlugin>['0']
+export type ModuleFederationPluginOptions = ConstructorParameters<typeof container.ModuleFederationPlugin>['0']
 
 export interface BuildConfigInput {
   /** target config to extend */
@@ -152,7 +152,8 @@ function mergeConfig(cfg1: BuildConfigInput, cfg2: BuildConfigInput): BuildConfi
     envVariables: extend(cfg1.envVariables, cfg2.envVariables),
     optimization: extend(cfg1.optimization, cfg2.optimization) as Optimization,
     test: extend(cfg1.test, cfg2.test) as TestConfig,
-    engines: extend(cfg1.engines, cfg2.engines) as Engines
+    engines: extend(cfg1.engines, cfg2.engines) as Engines,
+    federation: extend(cfg1.federation, cfg2.federation) as ModuleFederationPluginOptions
   })
 }
 
