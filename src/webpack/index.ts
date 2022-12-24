@@ -1,8 +1,8 @@
-import { isEmpty, mapValues } from 'lodash'
+import { mapValues } from 'lodash'
 import produce from 'immer'
 import fs from 'fs'
 import path from 'path'
-import { Configuration, DefinePlugin } from 'webpack'
+import { Configuration, container, DefinePlugin } from 'webpack'
 import HtmlPlugin from 'html-webpack-plugin'
 import CopyPlugin from 'copy-webpack-plugin'
 import ReactFastRefreshPlugin from '@pmmmwh/react-refresh-webpack-plugin'
@@ -22,7 +22,7 @@ import { getPathFromUrl, getPageFilename } from '../utils'
 import { appendPlugins, processSourceMapForDevServer, appendCacheGroups, parseOptimizationConfig, enableFilesystemCache } from '../utils/webpack'
 import { svgoConfigForImagemin } from '../utils/svgo'
 
-// const ModuleFederationPlugin = container.ModuleFederationPlugin
+const ModuleFederationPlugin = container.ModuleFederationPlugin
 const dirnameOfBuilder = path.resolve(__dirname, '../..')
 const nodeModulesOfBuilder = path.resolve(dirnameOfBuilder, 'node_modules')
 
@@ -120,16 +120,12 @@ export async function getConfig(): Promise<Configuration> {
   )
 
   const staticDirCopyPlugin = getStaticDirCopyPlugin(buildConfig)
-  const federationConfig = !isEmpty(buildConfig.federation) ? buildConfig.federation : null
+  const { disableTypesPlugin = false, ...federationConfig } = buildConfig.federation || {}
 
   config = appendPlugins(
     config,
-    // federationConfig != null ? new ModuleFederationPlugin(federationConfig) : null,
-    federationConfig != null ? new FederatedTypesPlugin({
-      federationConfig,
-      disableDownloadingRemoteTypes: false,
-      disableTypeCompilation: false
-    }) : null,
+    federationConfig ? new ModuleFederationPlugin(federationConfig) : null,
+    federationConfig && !disableTypesPlugin ? new FederatedTypesPlugin(federationConfig) : null,
     ...htmlPlugins,
     definePlugin,
     staticDirCopyPlugin,
