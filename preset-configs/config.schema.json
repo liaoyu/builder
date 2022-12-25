@@ -204,6 +204,10 @@
           "description": "配置项目所要求的 fec-builder 版本范围，格式遵循 [node-semver range](https://github.com/npm/node-semver#ranges)\n在统一的构建环境中，服务应依据该版本范围去选择合适的 builder 版本对项目进行构建；本地开发时，若本地使用的 builder 版本不匹配项目所配置的版本范围，会输出警告信息，但不影响使用"
         }
       }
+    },
+    "federation": {
+      "type": "object",
+      "description": "Module Federation 相关的配置，除了自定义的参数 `disableTypesPlugin` 用于控制是否开启 `@module-federation/typescript` 插件，其余参数均会透传给 [ModuleFederationPlugin](https://webpack.js.org/plugins/module-federation-plugin)"
     }
   }
 }
