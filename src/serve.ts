@@ -14,6 +14,9 @@ import { getConfigForDevServer } from './webpack'
 import { BuildConfig, DevProxy, findBuildConfig, watchBuildConfig } from './utils/build-conf'
 import { entries, mapValues } from 'lodash'
 import { abs } from './utils/paths'
+import SpeedMeasurePlugin from 'speed-measure-webpack-plugin'
+
+const smp = new SpeedMeasurePlugin()
 
 // 业务项目的配置文件，变更时需要重启 server
 const projectConfigFiles = [
@@ -72,7 +75,7 @@ async function runDevServer(port: number) {
       rewrites: getHistoryApiFallbackRewrites(buildConfig)
     }
   }
-  const compiler = webpack(webpackConfig)
+  const compiler = webpack(smp.wrap(webpackConfig))
   const server = new WebpackDevServer(compiler, devServerConfig)
 
   await new Promise<void>(resolve => {

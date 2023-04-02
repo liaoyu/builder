@@ -82,7 +82,7 @@ export async function getConfig(): Promise<Configuration> {
     },
     optimization: {
       minimizer: [
-        '...',
+        // '...',
         new CssMinimizerPlugin()
       ]
     },
