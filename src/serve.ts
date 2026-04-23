@@ -171,7 +171,9 @@ function getNetworkUrls(port: number) {
 
   Object.values(os.networkInterfaces()).forEach(networkInterface => {
     networkInterface?.forEach(address => {
-      if (address.family === 'IPv4' && !address.internal) {
+      const isIPv4 = address.family === 'IPv4' || (address.family as unknown) === 4
+
+      if (isIPv4 && !address.internal) {
         addresses.add(`http://${address.address}:${port}`)
       }
     })
