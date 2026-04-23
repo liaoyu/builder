@@ -171,6 +171,7 @@ function getNetworkUrls(port: number) {
 
   Object.values(os.networkInterfaces()).forEach(networkInterface => {
     networkInterface?.forEach(address => {
+      // Node <18 returns family as a number (4 or 6) rather than 'IPv4'/'IPv6'
       const isIPv4 = address.family === 'IPv4' || (address.family as unknown) === 4
 
       if (isIPv4 && !address.internal) {
