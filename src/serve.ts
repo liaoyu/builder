@@ -4,6 +4,7 @@
  */
 
 import fs from 'fs'
+import os from 'os'
 import url from 'url'
 import webpack from 'webpack'
 import WebpackDevServer from 'webpack-dev-server'
@@ -84,7 +85,17 @@ async function runDevServer(port: number) {
   })
 
   server.listen(port, host, () => {
-    logger.info(`Server started on ${colors.cyan(`http://localhost:${port}`)}`)
+    const localUrl = `http://localhost:${port}`
+    const networkUrls = getNetworkUrls(port)
+    const arrow = colors.green('➜')
+    const messages = [
+      `${arrow}  ${colors.bold('Local:')}   ${colors.cyan(localUrl)}`,
+      ...networkUrls.map(networkUrl => (
+        `${arrow}  ${colors.bold('Network:')} ${colors.cyan(networkUrl)}`
+      ))
+    ]
+
+    logger.info(`Server started:\n\n${messages.join('\n')}`)
   })
 
   return () => new Promise<void>(resolve => {
@@ -153,4 +164,21 @@ function getHistoryApiFallbackRewrites(buildConfig: BuildConfig) {
       )
     })
   )
+}
+
+function getNetworkUrls(port: number) {
+  const addresses = new Set<string>()
+
+  Object.values(os.networkInterfaces()).forEach(networkInterface => {
+    networkInterface?.forEach(address => {
+      // Node <18 returns family as a number (4 or 6) rather than 'IPv4'/'IPv6'
+      const isIPv4 = address.family === 'IPv4' || (address.family as unknown) === 4
+
+      if (isIPv4 && !address.internal) {
+        addresses.add(`http://${address.address}:${port}`)
+      }
+    })
+  })
+
+  return [...addresses]
 }
