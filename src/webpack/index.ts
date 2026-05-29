@@ -2,11 +2,12 @@ import { mapValues } from 'lodash'
 import produce from 'immer'
 import fs from 'fs'
 import path from 'path'
-import type { rspack as Rspack, RspackOptions } from '@rspack/core'
+import { rspack } from '@rspack/core'
+import type { RspackOptions } from '@rspack/core'
 import HtmlPlugin from 'html-webpack-plugin'
-import { loadRspackCore, loadReactRefreshPlugin } from '../utils/rspack-esm'
+import ReactRefreshPlugin from '@rspack/plugin-react-refresh'
 import { BundleAnalyzerPlugin } from 'webpack-bundle-analyzer'
-import { createWebpackBarRspackPlugin } from './webpackbar-rspack'
+import WebpackBarPlugin from 'webpackbar/rspack'
 import { ImageMinimizerPlugin } from '@rsbuild/plugin-image-compress'
 import { getBuildRoot, abs, getStaticPath, getDistPath, getSrcPath } from '../utils/paths'
 import { BuildConfig, findBuildConfig, getNeedAnalyze } from '../utils/build-conf'
@@ -14,14 +15,13 @@ import { addTransforms } from './transform'
 import { Env, getEnv } from '../utils/build-env'
 import logger from '../utils/logger'
 import { getPathFromUrl, getPageFilename } from '../utils'
-import { appendPlugins, processSourceMapForDevServer, appendCacheGroups, parseOptimizationConfig, enableFilesystemCache } from '../utils/webpack'
+import { appendPlugins, processSourceMapForDevServer, appendCacheGroups, parseOptimizationConfig, enableFilesystemCache, ignoreWarning } from '../utils/webpack'
 
 const dirnameOfBuilder = path.resolve(__dirname, '../..')
 const nodeModulesOfBuilder = path.resolve(dirnameOfBuilder, 'node_modules')
 
 /** 获取 rspack 配置（构建用） */
 export async function getConfig(): Promise<RspackOptions> {
-  const { rspack } = await loadRspackCore()
   const buildConfig = await findBuildConfig()
   const isProd = getEnv() === Env.Prod
   const isDev = getEnv() === Env.Dev
@@ -53,19 +53,7 @@ export async function getConfig(): Promise<RspackOptions> {
       ]
     },
     entry: mapValues(buildConfig.entries, entryFile => abs(entryFile)),
-    module: {
-      rules: [],
-      // Rspack 2 默认严格校验 ESM 导出；TS 类型再导出、decorator metadata 等会误报
-      // https://rspack.rs/config/module-parser#parserjavascript
-      parser: {
-        javascript: {
-          typeReexportsPresence: 'tolerant-no-check',
-          exportsPresence: 'warn',
-          importExportsPresence: 'warn',
-          reexportExportsPresence: 'warn'
-        }
-      }
-    },
+    module: { rules: [] },
     plugins: [],
     output: {
       path: getDistPath(buildConfig),
@@ -108,7 +96,7 @@ export async function getConfig(): Promise<RspackOptions> {
     config = appendCacheGroups(config, result.cacheGroups)
   }
 
-  config = addTransforms(config, buildConfig, rspack)
+  config = addTransforms(config, buildConfig)
 
   const htmlPlugins = Object.entries(buildConfig.pages).map(([ name, { template, entries } ]) => {
     return new HtmlPlugin({
@@ -127,14 +115,14 @@ export async function getConfig(): Promise<RspackOptions> {
     }, JSON.stringify)
   )
 
-  const staticDirCopyPlugin = getStaticDirCopyPlugin(buildConfig, rspack)
+  const staticDirCopyPlugin = getStaticDirCopyPlugin(buildConfig)
 
   config = appendPlugins(
     config,
     ...htmlPlugins,
     definePlugin,
     staticDirCopyPlugin,
-    createWebpackBarRspackPlugin(rspack, { color: 'green' })
+    new WebpackBarPlugin({ color: 'green' })
   )
 
   if (isProd) {
@@ -165,8 +153,8 @@ export async function getConfig(): Promise<RspackOptions> {
   }
 
   if (isDev) {
-    // 开发环境忽略 ESM 链接 warning（类型再导出、emitDecoratorMetadata 等）
-    // config = ignoreWarning(config, /ESModulesLinking/)
+    // 开发环境忽略 ESM re-export 链接 warning（如 export 'X' was not found in './Y'）
+    config = ignoreWarning(config, /ESModulesLinkingWarning/)
   }
 
   return config
@@ -177,13 +165,12 @@ export async function getConfigForDevServer() {
 
   let config = await getConfig()
   const buildConfig = await findBuildConfig()
-  const { filesystemCache, highQualitySourceMap } = buildConfig.optimization
+  const { filesystemCache, highQualitySourceMap, errorOverlay } = buildConfig.optimization
   const isDev = getEnv() === Env.Dev
 
   // 只保留 publicPath 中的 path，确保静态资源请求与页面走相同的 host（即本地 dev server）
   config = produce(config, newConfig => {
     newConfig.output!.publicPath = getPathFromUrl(buildConfig.publicUrl)
-    // 降低 dev server 基础设施日志（如每次编译成功的 info）
     newConfig.infrastructureLogging = {
       ...newConfig.infrastructureLogging,
       level: 'error'
@@ -199,8 +186,12 @@ export async function getConfigForDevServer() {
   }
 
   if (isDev) {
-    const ReactRefreshRspackPlugin = await loadReactRefreshPlugin()
-    config = appendPlugins(config, new ReactRefreshRspackPlugin())
+    config = appendPlugins(
+      config,
+      new ReactRefreshPlugin({
+        overlay: errorOverlay
+      })
+    )
   }
 
   return config
@@ -215,7 +206,7 @@ function getMode(): RspackOptions['mode'] {
 }
 
 /** 构造用于 static 目录复制的 plugin 实例 */
-function getStaticDirCopyPlugin(buildConfig: BuildConfig, rspack: typeof Rspack) {
+function getStaticDirCopyPlugin(buildConfig: BuildConfig) {
   const staticPath = getStaticPath(buildConfig)
   if (!fs.existsSync(staticPath)) return null
   try {

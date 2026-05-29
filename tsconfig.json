@@ -15,6 +15,10 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "webpackbar/rspack": ["node_modules/webpackbar/dist/rspack.d.cts"]
+    },
     "sourceMap": false,
     "skipLibCheck": true
   },

@@ -6,8 +6,9 @@
 import fs from 'fs'
 import os from 'os'
 import url from 'url'
+import { rspack } from '@rspack/core'
 import type { DevServer } from '@rspack/core'
-import { loadRspackCore, loadRspackDevServer } from './utils/rspack-esm'
+import { RspackDevServer } from '@rspack/dev-server'
 import type { ClientRequest, IncomingMessage } from 'http'
 import logger from './utils/logger'
 import { getPageFilename, getPathFromUrl, logLifecycle, watchFile } from './utils'
@@ -53,10 +54,6 @@ async function serve(port: number) {
 }
 
 async function runDevServer(port: number) {
-  const [{ rspack }, { RspackDevServer }] = await Promise.all([
-    loadRspackCore(),
-    loadRspackDevServer()
-  ])
   const buildConfig = await findBuildConfig()
   const rspackConfig = await getConfigForDevServer()
   logger.debug('rspack config:', rspackConfig)
@@ -129,58 +126,47 @@ export default logLifecycle('Serve', serve, logger)
 
 interface ProxyEntryOptions {
   changeOrigin: boolean
-  logger: Pick<Console, 'info' | 'warn' | 'error'>
-  on: {
-    proxyReq(proxyReq: ClientRequest): void
-    proxyRes(proxyRes: IncomingMessage): void
-  }
-}
-
-/** http-proxy-middleware v4：关闭每条代理请求的 [HPM] 日志 */
-const silentProxyLogger: Pick<Console, 'info' | 'warn' | 'error'> = {
-  info() {},
-  warn() {},
-  error: (...args) => console.error(...args)
+  logLevel: 'silent'
+  onProxyReq(proxyReq: ClientRequest): void
+  onProxyRes(proxyRes: IncomingMessage): void
 }
 
 const defaultProxyConfig: ProxyEntryOptions = {
 
   changeOrigin: true,
-  logger: silentProxyLogger,
+  logLevel: 'silent',
 
-  on: {
-    proxyReq(proxyReq) {
-      // add header `X-Real-IP`
-      const origin = proxyReq.getHeader('origin') as (string | undefined)
-      if (origin) {
-        proxyReq.setHeader(
-          "X-Real-IP",
-          url.parse(origin).hostname!
-        )
-      }
+  onProxyReq(proxyReq) {
+    // add header `X-Real-IP`
+    const origin = proxyReq.getHeader('origin') as (string | undefined)
+    if (origin) {
+      proxyReq.setHeader(
+        "X-Real-IP",
+        url.parse(origin).hostname!
+      )
+    }
 
-      // fix `referer` to avoid csrf detect
-      const referer = proxyReq.getHeader('referer') as (string | undefined)
-      if (referer) {
-        proxyReq.setHeader(
-          'referer',
-          referer.replace(
-            url.parse(referer).host!,
-            proxyReq.getHeader('host') as string
-          )
+    // fix `referer` to avoid csrf detect
+    const referer = proxyReq.getHeader('referer') as (string | undefined)
+    if (referer) {
+      proxyReq.setHeader(
+        'referer',
+        referer.replace(
+          url.parse(referer).host!,
+          proxyReq.getHeader('host') as string
         )
-      }
-    },
+      )
+    }
+  },
 
-    proxyRes(proxyRes) {
-      // 干掉 set-cookie 中的 secure 设置，因为本地开发 server 是 http 的
-      // TODO: 考虑支持 https dev server？
-      const setCookie = proxyRes.headers['set-cookie']
-      if (setCookie) {
-        proxyRes.headers['set-cookie'] = setCookie.map(
-          (cookie: string) => cookie.replace('; Secure', '')
-        )
-      }
+  onProxyRes(proxyRes) {
+    // 干掉 set-cookie 中的 secure 设置，因为本地开发 server 是 http 的
+    // TODO: 考虑支持 https dev server？
+    const setCookie = proxyRes.headers['set-cookie']
+    if (setCookie) {
+      proxyRes.headers['set-cookie'] = setCookie.map(
+        (cookie: string) => cookie.replace('; Secure', '')
+      )
     }
   }
 

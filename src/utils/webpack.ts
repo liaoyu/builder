@@ -213,12 +213,12 @@ export function addDefaultExtension(config: RspackOptions, extension: string) {
 // 变更 style-loader / experiments.css 等配置时需 bump，避免持久化缓存沿用旧产物
 const RSPACK_CACHE_VERSION = 'fec-builder-2.7.3-style-javascript-auto'
 
-/** 开启持久化缓存（Rspack cache） */
+/** 开启持久化缓存（Rspack experiments.cache） */
 export function enableFilesystemCache(config: RspackOptions): RspackOptions {
   return produce(config, newConfig => {
     newConfig.experiments = newConfig.experiments || {}
     newConfig.experiments.css = false
-    newConfig.cache = {
+    newConfig.experiments.cache = {
       type: 'persistent',
       version: RSPACK_CACHE_VERSION,
       storage: {

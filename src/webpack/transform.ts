@@ -1,5 +1,6 @@
 import produce from 'immer'
-import type { rspack as Rspack, RspackOptions, RuleSetRule } from '@rspack/core'
+import { rspack } from '@rspack/core'
+import type { RspackOptions, RuleSetRule } from '@rspack/core'
 import postcssPresetEnv from 'postcss-preset-env'
 import { isEmpty } from 'lodash'
 import { Transform } from '../constants/transform'
@@ -23,8 +24,7 @@ export function addTransforms(
   /** 当前 rspack 配置 */
   config: RspackOptions,
   /** 构建配置 build config */
-  buildConfig: BuildConfig,
-  rspack: typeof Rspack
+  buildConfig: BuildConfig
 ): RspackOptions {
   const transformConfigs = Object.entries(buildConfig.transforms).map(([condition, transform]) => {
     const [extensionValue, contextValue = ''] = condition.split('@')
@@ -55,7 +55,7 @@ export function addTransforms(
   })
 
   transformConfigs.forEach(({ transform, resource, context }) => {
-    config = addTransform(config, buildConfig, transform, resource, context, rspack)
+    config = addTransform(config, buildConfig, transform, resource, context)
   })
 
   return config
@@ -86,8 +86,7 @@ function addTransform(
   /** 资源后缀名条件 */
   resource: Condition,
   /** 上下文资源（引入当前资源的资源）后缀名条件 */
-  context: Condition,
-  rspack: typeof Rspack
+  context: Condition
 ) {
   const { targets, optimization } = buildConfig
 
@@ -153,10 +152,7 @@ function addTransform(
             ? {
               localIdentName: '[local]_[hash:base64:5]',
               // Node 17+ / OpenSSL 3 不再支持 MD4，需使用 xxhash64
-              localIdentHashDigest: 'xxhash64',
-              // css-loader v7 默认 namedExport: true，无 default export；
-              // 业务代码使用 `import style from '*.m.less'` 需保持 default export
-              namedExport: false
+              localIdentHashDigest: 'xxhash64'
             }
             : false
           )

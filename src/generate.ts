@@ -3,13 +3,12 @@
  * @author nighca <nighca@live.cn>
  */
 
+import { rspack } from '@rspack/core'
 import logger from './utils/logger'
-import { loadRspackCore } from './utils/rspack-esm'
 import { logLifecycle } from './utils'
 import { getConfig } from './webpack'
 
 async function generate() {
-  const { rspack } = await loadRspackCore()
   const config = await getConfig()
 
   logger.debug('rspack config:', config)
