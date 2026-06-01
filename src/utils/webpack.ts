@@ -1,3 +1,4 @@
+import { createHash } from 'crypto'
 import { produce } from 'immer'
 import path from 'path'
 import type { RspackOptions, RspackPluginInstance, Chunk, RuleSetRule } from '@rspack/core'
@@ -5,7 +6,7 @@ import type { RspackOptions, RspackPluginInstance, Chunk, RuleSetRule } from '@r
 /** 兼容 webpack 社区 plugin 的 apply 签名 */
 type FecPlugin = RspackPluginInstance | { apply(compiler: unknown): void }
 import chunks from '../constants/chunks'
-import { Optimization } from './build-conf'
+import { BuildConfig, Optimization } from './build-conf'
 import { getCachePath } from './paths'
 import logger from './logger'
 
@@ -210,17 +211,41 @@ export function addDefaultExtension(config: RspackOptions, extension: string) {
   })
 }
 
-// 变更 style-loader / experiments.css 等配置时需 bump，避免持久化缓存沿用旧产物
-const RSPACK_CACHE_VERSION = 'fec-builder-2.7.3-style-javascript-auto'
+/** 键排序的稳定 JSON，用于相同 build-config 生成相同 hash */
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== 'object') {
+    return JSON.stringify(value)
+  }
+  if (Array.isArray(value)) {
+    return '[' + value.map(stableStringify).join(',') + ']'
+  }
+  const keys = Object.keys(value as object).sort()
+  const body = keys.map(key => {
+    const v = (value as Record<string, unknown>)[key]
+    return JSON.stringify(key) + ':' + stableStringify(v)
+  }).join(',')
+  return '{' + body + '}'
+}
+
+/** 根据 build-config 生成 Rspack 持久化缓存 version（相同有效配置 → 相同 version） */
+export function getRspackCacheVersion(buildConfig: BuildConfig): string {
+  const digest = createHash('sha256')
+    .update(stableStringify(buildConfig))
+    .digest('hex')
+    .slice(0, 16)
+  return `fec-builder-${digest}`
+}
 
 /** 开启持久化缓存（Rspack experiments.cache） */
-export function enableFilesystemCache(config: RspackOptions): RspackOptions {
+export function enableFilesystemCache(config: RspackOptions, buildConfig: BuildConfig): RspackOptions {
+  const version = getRspackCacheVersion(buildConfig)
+  logger.debug('rspack persistent cache version:', version)
   return produce(config, newConfig => {
     newConfig.experiments = newConfig.experiments || {}
     newConfig.experiments.css = false
     newConfig.experiments.cache = {
       type: 'persistent',
-      version: RSPACK_CACHE_VERSION,
+      version,
       storage: {
         type: 'filesystem',
         directory: getCachePath()

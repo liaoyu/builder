@@ -178,7 +178,7 @@ export async function getConfigForDevServer() {
   })
 
   if (isDev && filesystemCache) {
-    config = enableFilesystemCache(config)
+    config = enableFilesystemCache(config, buildConfig)
   }
 
   if (isDev) {
